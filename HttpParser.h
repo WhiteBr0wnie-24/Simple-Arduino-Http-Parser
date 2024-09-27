@@ -30,16 +30,20 @@ class HttpParser {
   public:
     HttpParser(Stream &clientStream, size_t bufferSize);
     bool receive(void);
-    bool transmit(int code, String message);
     bool transmit(String message);
+    bool transmit(int code, String message);
+    bool transmit(String contentType, String message);
     bool transmit(String contentType, byte *data, size_t length);
     String getVersion(void);
     String getMethod(void);
     String getPath(void);
+    String getHeader(String key);
     vector<KeyValueEntry> getHeaders(void);
+    String getPathParameter(String key);
     vector<KeyValueEntry> getPathParameters(void);
     int getDataOffsetInBytes(void);
     int getDataLength(void);
+    String getDataAsString(void);
     char* getData(void);
     ErrorCode getError(void);
     void end(void);

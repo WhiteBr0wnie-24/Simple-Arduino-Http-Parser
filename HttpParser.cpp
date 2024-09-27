@@ -30,7 +30,7 @@ HttpParser::HttpParser(Stream &c, size_t bufferSize) : clientStream(c) {
 void splitString(char* buff, unsigned int len, char delimiter, vector<String> *target) {
   String currentPiece = "";
   for (int i = 0; i < len; i++) {
-    if (buff[i] != delimiter) {
+    if (buff[i] != delimiter && buff[i] != '\0') {
       currentPiece += buff[i];
     } else {
       target->push_back(currentPiece);
@@ -86,9 +86,9 @@ bool HttpParser::parsePathParameters(void) {
     vector<String> params;
     int secondWhiteSpaceIndex = firstLine.indexOf(' ', paramStartIndex);
     String paramPart = firstLine.substring(paramStartIndex + 1, secondWhiteSpaceIndex);
-    size_t len = paramPart.length() + 1;
+    size_t len = paramPart.length(); // length includes null-terminator
     char paramPartBuff[len];
-    paramPart.toCharArray(paramPartBuff, sizeof(paramPartBuff));
+    paramPart.toCharArray(paramPartBuff, len);
     splitString(paramPartBuff, len - 1, '&', &params);
     printDebug(String("Extracted ") + String(params.size()));
     printDebug(" path parameters");
@@ -192,10 +192,17 @@ bool HttpParser::transmit(int code, String message) {
 }
 
 bool HttpParser::transmit(String body) {
-  size_t len = body.length() + 1;
+  size_t len = body.length();
   char bodyBuff[len];
   body.toCharArray(bodyBuff, len);
   return transmit("text/plain", (byte*) bodyBuff, len - 1);
+}
+
+bool HttpParser::transmit(String contentType, String body) {
+  size_t len = body.length();
+  char bodyBuff[len];
+  body.toCharArray(bodyBuff, len);
+  return transmit(contentType, (byte*) bodyBuff, len - 1);
 }
 
 bool HttpParser::transmit(String contentType, byte *data, size_t length) {
@@ -223,6 +230,26 @@ String HttpParser::getPath(void) {
   return path;
 }
 
+String HttpParser::getHeader(String key) {
+  for (int i = 0; i < requestHeaders.size(); i++) {
+    KeyValueEntry current = requestHeaders.at(i);
+    if (current.key == key) {
+      return current.value;
+    }
+  }
+  return "";
+}
+
+String HttpParser::getPathParameter(String key) {
+  for (int i = 0; i < requestParams.size(); i++) {
+    KeyValueEntry current = requestParams.at(i);
+    if (current.key == key) {
+      return current.value;
+    }
+  }
+  return "";
+}
+
 vector<KeyValueEntry> HttpParser::getHeaders(void) {
   return requestHeaders;
 }
@@ -242,6 +269,14 @@ int HttpParser::getDataLength(void) {
   } else {
     return 0;
   }
+}
+
+String HttpParser::getDataAsString(void) {
+  size_t numDataBytes = getDataLength();
+  char tmp[numDataBytes + 1];
+  memcpy(tmp, data, numDataBytes);
+  tmp[numDataBytes] = '\0';
+  return String(tmp);
 }
 
 char* HttpParser::getData(void) {
